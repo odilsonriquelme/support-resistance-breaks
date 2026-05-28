@@ -1,0 +1,266 @@
+//@version=6
+indicator(
+     title              = "Support & Resistance Levels with Breaks [v6+]",
+     shorttitle         = "S/R Breaks v6+",
+     overlay            = true,
+     max_bars_back      = 1000,
+     max_lines_count    = 100,
+     max_labels_count   = 250
+ )
+
+// ═══════════════════════════ INPUTS ════════════════════════════════════════
+grpPiv = "Pivots"
+leftBars     = input.int(15, "Left Bars",  minval = 1, group = grpPiv)
+rightBars    = input.int(15, "Right Bars", minval = 1, group = grpPiv)
+
+grpBrk = "Breaks"
+showBreaks   = input.bool(true,  "Show Break Labels",          group = grpBrk)
+showWicks    = input.bool(true,  "Show Bull/Bear Wick Labels", group = grpBrk)
+useVolFilter = input.bool(true,  "Require Volume Confirmation", group = grpBrk)
+volumeThresh = input.float(20,   "Volume Oscillator Threshold (%)", group = grpBrk)
+confirmClose = input.bool(true,  "Confirm Only on Bar Close (no repaint)", group = grpBrk)
+
+grpAtr = "ATR Filter"
+useAtrFilter = input.bool(true,  "Filter Weak Breaks by ATR",  group = grpAtr)
+atrLen       = input.int(14,     "ATR Length",  minval = 1,    group = grpAtr)
+atrMult      = input.float(0.25, "Min Break Size (× ATR)", step = 0.05, group = grpAtr,
+                            tooltip = "Close must exceed level by at least this many ATRs to count as a real break.")
+
+grpMtf = "Higher Timeframe S/R"
+useHtf       = input.bool(false, "Show HTF Levels",                group = grpMtf)
+htfTf        = input.timeframe("D", "Higher Timeframe",            group = grpMtf)
+htfLeft      = input.int(5,  "HTF Left Bars",  minval = 1,         group = grpMtf)
+htfRight     = input.int(5,  "HTF Right Bars", minval = 1,         group = grpMtf)
+htfResColor  = input.color(color.new(#FF1744, 50), "HTF Resistance", group = grpMtf)
+htfSupColor  = input.color(color.new(#2962FF, 50), "HTF Support",    group = grpMtf)
+
+grpRetest = "Retest"
+useRetest    = input.bool(true,  "Detect Retests",                group = grpRetest)
+retestBars   = input.int(20,     "Max Bars to Wait for Retest", minval = 1, group = grpRetest)
+retestProx   = input.float(0.5,  "Touch Proximity (× ATR)", step = 0.05, group = grpRetest,
+                            tooltip = "How close price must come to the broken level to count as a touch.")
+
+grpTable = "Levels Table"
+showTable    = input.bool(true, "Show Active Levels Table", group = grpTable)
+
+grpStyle = "Style"
+resColor     = input.color(color.new(#FF1744, 0), "Resistance", group = grpStyle)
+supColor     = input.color(color.new(#2962FF, 0), "Support",    group = grpStyle)
+lineWidth    = input.int(2, "Line Width", minval = 1, maxval = 5, group = grpStyle)
+extendRight  = input.bool(true, "Extend Lines to the Right",   group = grpStyle)
+
+grpAlert = "Alerts"
+alertOnce    = input.bool(true, "Alert Only Once per Level", group = grpAlert)
+
+// ═══════════════════════════ CORE SERIES ═══════════════════════════════════
+atr   = ta.atr(atrLen)
+ph    = ta.pivothigh(leftBars, rightBars)
+pl    = ta.pivotlow(leftBars, rightBars)
+
+short = ta.ema(volume, 5)
+long_ = ta.ema(volume, 10)
+osc   = 100.0 * (short - long_) / long_
+volOK = not useVolFilter or osc > volumeThresh
+
+barOK = not confirmClose or barstate.isconfirmed
+
+// ═══════════════════════════ MAIN S/R LINES ════════════════════════════════
+var line  resLine    = na
+var line  supLine    = na
+var float resLevel   = na
+var float supLevel   = na
+var int   resBarIdx  = na
+var int   supBarIdx  = na
+var bool  resBroken  = false
+var bool  supBroken  = false
+var int   resBrkBar  = na
+var int   supBrkBar  = na
+
+if not na(ph)
+    if not na(resLine)
+        line.delete(resLine)
+    resLevel  := ph
+    resBarIdx := bar_index - rightBars
+    resBroken := false
+    resBrkBar := na
+    resLine   := line.new(resBarIdx, ph, bar_index, ph,
+                          color = resColor, width = lineWidth,
+                          extend = extendRight ? extend.right : extend.none)
+
+if not na(pl)
+    if not na(supLine)
+        line.delete(supLine)
+    supLevel  := pl
+    supBarIdx := bar_index - rightBars
+    supBroken := false
+    supBrkBar := na
+    supLine   := line.new(supBarIdx, pl, bar_index, pl,
+                          color = supColor, width = lineWidth,
+                          extend = extendRight ? extend.right : extend.none)
+
+// ═══════════════════════════ HTF LEVELS ════════════════════════════════════
+[htfPh, htfPl] = request.security(syminfo.tickerid, htfTf,
+     [ta.pivothigh(htfLeft, htfRight), ta.pivotlow(htfLeft, htfRight)],
+     lookahead = barmerge.lookahead_off)
+
+var line htfResLine = na
+var line htfSupLine = na
+
+htfPhChanged = not na(htfPh) and (na(htfPh[1]) or htfPh != htfPh[1])
+htfPlChanged = not na(htfPl) and (na(htfPl[1]) or htfPl != htfPl[1])
+
+if useHtf and htfPhChanged
+    if not na(htfResLine)
+        line.delete(htfResLine)
+    htfResLine := line.new(bar_index - 1, htfPh, bar_index, htfPh,
+                           color = htfResColor, width = lineWidth,
+                           style = line.style_dashed,
+                           extend = extendRight ? extend.right : extend.none)
+
+if useHtf and htfPlChanged
+    if not na(htfSupLine)
+        line.delete(htfSupLine)
+    htfSupLine := line.new(bar_index - 1, htfPl, bar_index, htfPl,
+                           color = htfSupColor, width = lineWidth,
+                           style = line.style_dashed,
+                           extend = extendRight ? extend.right : extend.none)
+
+// ═══════════════════════════ BREAK DETECTION ═══════════════════════════════
+bullWick = (open - low) > (close - open)
+bearWick = (open - close) < (high - open)
+
+atrOKres = not useAtrFilter or (close - resLevel) >= atrMult * atr
+atrOKsup = not useAtrFilter or (supLevel - close) >= atrMult * atr
+
+resBreakRaw = not na(resLevel) and ta.crossover(close, resLevel)  and barOK and atrOKres
+supBreakRaw = not na(supLevel) and ta.crossunder(close, supLevel) and barOK and atrOKsup
+
+resBreak = resBreakRaw and volOK and (not alertOnce or not resBroken)
+supBreak = supBreakRaw and volOK and (not alertOnce or not supBroken)
+
+if resBreak
+    resBroken := true
+    resBrkBar := bar_index
+if supBreak
+    supBroken := true
+    supBrkBar := bar_index
+
+// Break labels
+if showBreaks and resBreak and not bullWick
+    label.new(bar_index, low, "B",
+              style = label.style_label_up, color = color.new(color.green, 0),
+              textcolor = color.white, size = size.tiny)
+if showBreaks and supBreak and not bearWick
+    label.new(bar_index, high, "B",
+              style = label.style_label_down, color = color.new(color.red, 0),
+              textcolor = color.white, size = size.tiny)
+if showWicks and resBreakRaw and bullWick
+    label.new(bar_index, low, "Bull Wick",
+              style = label.style_label_up, color = color.new(color.green, 0),
+              textcolor = color.white, size = size.tiny)
+if showWicks and supBreakRaw and bearWick
+    label.new(bar_index, high, "Bear Wick",
+              style = label.style_label_down, color = color.new(color.red, 0),
+              textcolor = color.white, size = size.tiny)
+
+// ═══════════════════════════ RETEST DETECTION ══════════════════════════════
+// Touch + reversal bar (hammer for resistance-turned-support,
+// shooting star / bearish engulfing for support-turned-resistance)
+body      = math.abs(close - open)
+upperWick = high - math.max(close, open)
+lowerWick = math.min(close, open) - low
+
+bullReversal = (lowerWick >= 2 * body and close > open) or
+               (close > open and close[1] < open[1] and close > open[1] and open < close[1])
+bearReversal = (upperWick >= 2 * body and close < open) or
+               (close < open and close[1] > open[1] and close < open[1] and open > close[1])
+
+var bool resRetested = false
+var bool supRetested = false
+
+if not na(ph)
+    resRetested := false
+if not na(pl)
+    supRetested := false
+
+withinResWindow = useRetest and resBroken and not resRetested and
+                  not na(resBrkBar) and (bar_index - resBrkBar) <= retestBars
+withinSupWindow = useRetest and supBroken and not supRetested and
+                  not na(supBrkBar) and (bar_index - supBrkBar) <= retestBars
+
+resRetest = withinResWindow and
+            low <= resLevel + retestProx * atr and
+            close > resLevel and
+            bullReversal
+
+supRetest = withinSupWindow and
+            high >= supLevel - retestProx * atr and
+            close < supLevel and
+            bearReversal
+
+if resRetest
+    resRetested := true
+    label.new(bar_index, low, "RT",
+              style = label.style_label_up, color = color.new(color.teal, 0),
+              textcolor = color.white, size = size.small,
+              tooltip = "Retest of broken resistance + bullish reversal")
+
+if supRetest
+    supRetested := true
+    label.new(bar_index, high, "RT",
+              style = label.style_label_down, color = color.new(color.orange, 0),
+              textcolor = color.white, size = size.small,
+              tooltip = "Retest of broken support + bearish reversal")
+
+// ═══════════════════════════ LEVELS TABLE ══════════════════════════════════
+var table tbl = table.new(position.top_left, 2, 6,
+                          border_width = 1, frame_width = 1,
+                          frame_color = color.new(color.gray, 70))
+
+f_pct(level) =>
+    na(level) ? na : (close - level) / level * 100.0
+
+if showTable and barstate.islast
+    table.clear(tbl, 0, 0, 1, 5)
+    table.cell(tbl, 0, 0, "Level",      bgcolor = color.new(color.gray, 70), text_color = color.white, text_size = size.small)
+    table.cell(tbl, 1, 0, "Price / Δ%", bgcolor = color.new(color.gray, 70), text_color = color.white, text_size = size.small)
+
+    resTxt = na(resLevel) ? "—" : str.tostring(resLevel, format.mintick) +
+             "  (" + str.tostring(f_pct(resLevel), "0.00") + "%)"
+    resStatus = na(resLevel) ? "Resistance" :
+                resBroken ? "R · broken" : "R · active"
+    table.cell(tbl, 0, 1, resStatus, text_color = resColor, text_size = size.small)
+    table.cell(tbl, 1, 1, resTxt,    text_color = color.white, text_size = size.small)
+
+    supTxt = na(supLevel) ? "—" : str.tostring(supLevel, format.mintick) +
+             "  (" + str.tostring(f_pct(supLevel), "0.00") + "%)"
+    supStatus = na(supLevel) ? "Support" :
+                supBroken ? "S · broken" : "S · active"
+    table.cell(tbl, 0, 2, supStatus, text_color = supColor, text_size = size.small)
+    table.cell(tbl, 1, 2, supTxt,    text_color = color.white, text_size = size.small)
+
+    if useHtf
+        htfResTxt = na(htfPh) ? "—" : str.tostring(htfPh, format.mintick) +
+                    "  (" + str.tostring(f_pct(htfPh), "0.00") + "%)"
+        table.cell(tbl, 0, 3, "HTF R (" + htfTf + ")", text_color = htfResColor, text_size = size.small)
+        table.cell(tbl, 1, 3, htfResTxt, text_color = color.white, text_size = size.small)
+
+        htfSupTxt = na(htfPl) ? "—" : str.tostring(htfPl, format.mintick) +
+                    "  (" + str.tostring(f_pct(htfPl), "0.00") + "%)"
+        table.cell(tbl, 0, 4, "HTF S (" + htfTf + ")", text_color = htfSupColor, text_size = size.small)
+        table.cell(tbl, 1, 4, htfSupTxt, text_color = color.white, text_size = size.small)
+
+    table.cell(tbl, 0, 5, "ATR(" + str.tostring(atrLen) + ")",
+               text_color = color.new(color.white, 30), text_size = size.small)
+    table.cell(tbl, 1, 5, str.tostring(atr, format.mintick),
+               text_color = color.new(color.white, 30), text_size = size.small)
+
+// ═══════════════════════════ ALERTS ════════════════════════════════════════
+alertcondition(supBreakRaw and volOK, title = "Support Broken",
+               message = "Support broken at {{close}} on {{ticker}} ({{interval}})")
+alertcondition(resBreakRaw and volOK, title = "Resistance Broken",
+               message = "Resistance broken at {{close}} on {{ticker}} ({{interval}})")
+alertcondition(resRetest, title = "Resistance Retest",
+               message = "Resistance retest at {{close}} on {{ticker}} ({{interval}})")
+alertcondition(supRetest, title = "Support Retest",
+               message = "Support retest at {{close}} on {{ticker}} ({{interval}})")
