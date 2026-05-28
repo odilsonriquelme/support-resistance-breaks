@@ -132,8 +132,11 @@ bearWick = (open - close) < (high - open)
 atrOKres = not useAtrFilter or (close - resLevel) >= atrMult * atr
 atrOKsup = not useAtrFilter or (supLevel - close) >= atrMult * atr
 
-resBreakRaw = not na(resLevel) and ta.crossover(close, resLevel)  and barOK and atrOKres
-supBreakRaw = not na(supLevel) and ta.crossunder(close, supLevel) and barOK and atrOKsup
+resCross = ta.crossover(close,  resLevel)
+supCross = ta.crossunder(close, supLevel)
+
+resBreakRaw = not na(resLevel) and resCross and barOK and atrOKres
+supBreakRaw = not na(supLevel) and supCross and barOK and atrOKsup
 
 resBreak = resBreakRaw and volOK and (not alertOnce or not resBroken)
 supBreak = supBreakRaw and volOK and (not alertOnce or not supBroken)
