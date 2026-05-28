@@ -1,4 +1,4 @@
-# Support & Resistance Levels with Breaks [v6+]
+# Support & Resistance @ape_bitcoiner V1.0
 
 Pine Script v6 indicator for TradingView. Auto-detects pivots, draws S/R lines, flags clean breakouts, retests with reversal bars, and shows higher-timeframe levels.
 

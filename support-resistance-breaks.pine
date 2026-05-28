@@ -1,7 +1,6 @@
 //@version=6
 indicator(
-     title              = "Support & Resistance Levels with Breaks [v6+]",
-     shorttitle         = "S/R Breaks v6+",
+     title              = "Support & Resistance @ape_bitcoiner V1.0",
      overlay            = true,
      max_bars_back      = 1000,
      max_lines_count    = 100,
@@ -31,8 +30,8 @@ useHtf       = input.bool(false, "Show HTF Levels",                group = grpMt
 htfTf        = input.timeframe("D", "Higher Timeframe",            group = grpMtf)
 htfLeft      = input.int(5,  "HTF Left Bars",  minval = 1,         group = grpMtf)
 htfRight     = input.int(5,  "HTF Right Bars", minval = 1,         group = grpMtf)
-htfResColor  = input.color(color.new(#FF1744, 50), "HTF Resistance", group = grpMtf)
-htfSupColor  = input.color(color.new(#2962FF, 50), "HTF Support",    group = grpMtf)
+htfResColor  = input.color(color.new(color.red, 50),   "HTF Resistance", group = grpMtf)
+htfSupColor  = input.color(color.new(color.green, 50), "HTF Support",    group = grpMtf)
 
 grpRetest = "Retest"
 useRetest    = input.bool(true,  "Detect Retests",                group = grpRetest)
@@ -44,10 +43,10 @@ grpTable = "Levels Table"
 showTable    = input.bool(true, "Show Active Levels Table", group = grpTable)
 
 grpStyle = "Style"
-resColor     = input.color(color.new(#FF1744, 0), "Resistance", group = grpStyle)
-supColor     = input.color(color.new(#2962FF, 0), "Support",    group = grpStyle)
+resColor     = input.color(color.new(color.red, 0),   "Resistance", group = grpStyle)
+supColor     = input.color(color.new(color.green, 0), "Support",    group = grpStyle)
 lineWidth    = input.int(2, "Line Width", minval = 1, maxval = 5, group = grpStyle)
-extendRight  = input.bool(true, "Extend Lines to the Right",   group = grpStyle)
+extendRight  = input.bool(true, "Extend Lines to the Right", group = grpStyle)
 showPriceTag = input.bool(true, "Show Price Tag on S/R Lines", group = grpStyle,
                           tooltip = "Floating label at the right edge of each S/R line showing its price.")
 
@@ -154,11 +153,13 @@ if supBreak
 if showBreaks and resBreak and not bullWick
     label.new(bar_index, low, "B",
               style = label.style_label_up, color = color.new(color.green, 0),
-              textcolor = color.white, size = size.tiny)
+              textcolor = color.white, size = size.tiny,
+              tooltip = "Resistance break")
 if showBreaks and supBreak and not bearWick
     label.new(bar_index, high, "B",
               style = label.style_label_down, color = color.new(color.red, 0),
-              textcolor = color.white, size = size.tiny)
+              textcolor = color.white, size = size.tiny,
+              tooltip = "Support break")
 if showWicks and resBreakRaw and bullWick
     label.new(bar_index, low, "Bull Wick",
               style = label.style_label_up, color = color.new(color.green, 0),
@@ -169,8 +170,6 @@ if showWicks and supBreakRaw and bearWick
               textcolor = color.white, size = size.tiny)
 
 // ═══════════════════════════ RETEST DETECTION ══════════════════════════════
-// Touch + reversal bar (hammer for resistance-turned-support,
-// shooting star / bearish engulfing for support-turned-resistance)
 body      = math.abs(close - open)
 upperWick = high - math.max(close, open)
 lowerWick = math.min(close, open) - low
@@ -218,7 +217,6 @@ if supRetest
               tooltip = "Retest of broken support + bearish reversal")
 
 // ═══════════════════════════ PRICE TAGS ON LINES ═══════════════════════════
-// Floating labels at the right edge of each S/R line, showing the level price.
 var label resTag    = na
 var label supTag    = na
 var label htfResTag = na
