@@ -4,6 +4,10 @@ Pine Script v6 indicator for TradingView. Auto-detects pivots, draws S/R lines, 
 
 Based on the LuxAlgo v4 original, rewritten for Pine v6 with several additions.
 
+**Files:**
+- `support-resistance-breaks.pine` — English version.
+- `support-resistance-breaks-ptbr.pine` — Versão em português (mesmo código, inputs e mensagens traduzidos).
+
 ## Features
 
 - **Auto S/R lines** — pivots redrawn with `line.new`, old lines deleted when invalidated.
@@ -14,6 +18,7 @@ Based on the LuxAlgo v4 original, rewritten for Pine v6 with several additions.
 - **Higher-timeframe S/R** — overlays daily/4h pivots on lower TFs via `request.security`.
 - **Retest detection** — flags "RT" when price returns to a broken level **and** prints a reversal bar (hammer / engulfing).
 - **Levels table** — top-left corner, shows active R/S, % distance, HTF levels, ATR.
+- **Price tag on lines** — floating label at the right edge of each S/R line with its price (toggle via `Show Price Tag on S/R Lines`).
 - **Alerts** — break and retest alerts with `{{ticker}}` / `{{interval}}` / `{{close}}` placeholders.
 
 ## Inputs
