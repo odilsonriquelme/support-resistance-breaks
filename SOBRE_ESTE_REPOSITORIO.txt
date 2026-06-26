@@ -1,0 +1,51 @@
+REPOSITÓRIO: support-resistance-breaks
+TIPO: Público | Próprio
+LINGUAGEM: Pine Script v6
+URL: https://github.com/odilsonriquelme/support-resistance-breaks
+LICENÇA: MIT
+TÍTULO INTERNO: "Support & Resistance @ape_bitcoiner V1.0"
+
+DESCRIÇÃO
+---------
+Indicador Pine Script v6 para TradingView que detecta automaticamente pivôs, desenha
+linhas de Suporte e Resistência (S/R), sinaliza rompimentos limpos, identifica retestes
+com barras de reversão e exibe níveis de timeframe superior.
+
+Baseado no indicador original "S/R Breaks" da LuxAlgo (v4), reescrito do zero para
+Pine v6 com várias adições próprias.
+
+FUNCIONALIDADES (confirmadas no código)
+----------------------------------------
+- Linhas S/R automáticas: pivôs desenhados com line.new; linhas antigas são deletadas
+  quando invalidadas (controle de objetos para não estourar o limite).
+- Detecção de rompimento: crossover/crossunder confirmado no fechamento, filtrado por
+  volume e ATR.
+- Filtro ATR: rejeita rompimentos fracos menores que atrMult × ATR (padrão 0.25).
+  Evita falsos rompimentos por ruído.
+- No-repaint: toggle "Confirm on Close" usa barstate.isconfirmed (sinais não redesenham).
+- Labels de pavio Bull/Bear: distingue rompimento limpo de pavio de rejeição.
+- S/R de timeframe superior (HTF): sobrepõe pivôs do diário/4h em timeframes menores
+  via request.security (default desligado).
+- Detecção de RETESTE: marca "RT" quando o preço volta ao nível rompido E imprime uma
+  barra de reversão (martelo / engolfo). Janela de espera configurável (padrão 20 barras)
+  e proximidade do toque em múltiplos de ATR (padrão 0.5).
+- Tabela de níveis: canto superior esquerdo, mostra R/S ativos, distância %, níveis HTF e ATR.
+- Tag de preço nas linhas: label flutuante na borda direita de cada linha S/R com o preço.
+- Alertas: rompimento e reteste, com placeholders {{ticker}} / {{interval}} / {{close}}.
+  Inclui alertcondition para: Support Broken, Resistance Broken, Resistance Retest, Support Retest.
+
+ARQUIVOS
+--------
+support-resistance-breaks.pine       → Versão em INGLÊS (326 linhas). Versão de referência.
+support-resistance-breaks-ptbr.pine  → Versão em PORTUGUÊS (326 linhas). MESMO CÓDIGO e mesma
+                                       lógica — apenas títulos, inputs e mensagens traduzidos.
+                                       (Verificado: quantidade e tipo de inputs idênticos.)
+README.md   → Documentação completa em inglês: features, tabela de inputs com defaults,
+              guia de instalação e dicas de tuning por ativo/timeframe. (Está muito bom.)
+.gitignore  → Arquivos ignorados pelo git.
+
+DICAS DE USO (do README)
+------------------------
+- BTC 15m/1h: atrMult = 0.25, filtro de volume ON, HTF = D
+- BTC diário: atrMult = 0.5–1.0, HTF off
+- Scalping em sessões de baixo volume: desligar useVolFilter
